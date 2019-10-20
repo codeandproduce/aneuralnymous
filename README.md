@@ -10,13 +10,14 @@ As a Chrome extension, this project makes it immensely convenient and more reali
 ## 2. Screenshots:
 
 ### a. First Page
-![first screenshot](https://ibb.co/7JWc63Z)
+![first screenshot](https://i.ibb.co/N6DXLDy/Screen-Shot-2019-10-20-at-2-23-04-AM.png)
 
 ### b. Second Page
-![first screenshot](https://ibb.co/64PSk2V)
+![first screenshot](https://i.ibb.co/nDcyFTZ/Screen-Shot-2019-10-20-at-2-23-21-AM.png)
 
 ### c. Third Page
-![first screenshot](https://ibb.co/PZXR5X6)
+![first screenshot](https://i.ibb.co/SXnT9kM/Screen-Shot-2019-10-20-at-2-24-40-AM.png)
+
 
 
 
