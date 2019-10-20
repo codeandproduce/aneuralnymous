@@ -7,6 +7,8 @@ function changePopup(){
 
 var jacob = document.getElementById("jacob");
 
+
+
 jacob.onclick = function(){
 	location.href = 'popup.html';
 };

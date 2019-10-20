@@ -141,6 +141,24 @@ function uploadImage(img){
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+var chev = document.getElementById("chev");
+
+chev.addEventListener('click', function () {
+  location.href='dashboard.html';
+});
+
+
 	// var data = new FormData();
  //    data.append('file', $('#file')[0].files[0]);
 
