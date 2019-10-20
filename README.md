@@ -1,4 +1,4 @@
-# aneuralnymous
+# Aneuralnymous
 
 ## 1. Motivation
 
