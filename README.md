@@ -3,7 +3,7 @@
 ## 1. Motivation
 
 The need to secure anonymity in a world with facial recognition technology that is fully capable of invading our privacy. 
-Specifically, we use adversarial examples to defend against the [Social Mapper(https://github.com/Greenwolf/social_mapper)] tool created by Joshua Wilkin(Greenwolf), which is capable of identifying individual social media platforms using just an image.
+Specifically, we use adversarial examples to defend against the [Social Mapper](https://github.com/Greenwolf/social_mapper) tool created by Joshua Wilkin(Greenwolf), which is capable of identifying individual social media platforms using just an image.
 As a Chrome extension, this project makes it immensely convenient and more realistic for people to actually use this tool before uploading images of themselves on the web.
 
 
