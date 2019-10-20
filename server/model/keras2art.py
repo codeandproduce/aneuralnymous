@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 import tensorflow.keras.layers as layers
 import tensorflow.keras.models as models
+import tensorflow.keras.backend as K
 from tensorflow.keras.losses import categorical_crossentropy, binary_crossentropy
 from tensorflow.keras.optimizers import SGD
 import argparse
@@ -18,8 +19,8 @@ from art.classifiers import KerasClassifier
 from art.attacks import FastGradientMethod, UniversalPerturbation, BasicIterativeMethod
 from PIL import Image
 
-sys.path.append('./cleverhans')
-from cleverhans import utils_keras, attacks
+# sys.path.append('./cleverhans')
+# from cleverhans import utils_keras, attacks
 
 ############## cribbed from face_recognition ##############
 
@@ -82,39 +83,71 @@ def main(args):
                        {"GlorotUniform": tf.keras.initializers.glorot_uniform,
 					    "ScaleLayer": ScaleLayer,
 					    "ReshapeLayer": ReshapeLayer}, compile=False)
-    input_layer  = layers.Input(shape=(None, 150,150,3))
-    binary_classifier = models.Sequential([
-        layers.Dense(100,activation='relu'),
-        layers.Dense(2,activation='softmax')
-    ])
-    reference_embedding = model_from_dlib.predict(
-        input_keras(fr.load_image_file(args.img)))
-    wrong_embedding = model_from_dlib.predict(
-        input_keras(fr.load_image_file('./gollum.jpg')))
+    reference_embedding = model_from_dlib(
+        K.cast(input_keras(fr.load_image_file(args.img)),dtype='float32'))
+    wrong_embedding = model_from_dlib(
+        K.cast(input_keras(fr.load_image_file('./gollum.jpg')),dtype='float32'))
     threshold = 1.0
     def l2s(x):
-        return layers.concatenate(
-            [tf.linalg.norm(x-reference_embedding)-threshold,
-             tf.linalg.norm(x-wrong_embedding)-threshold]
+        return tf.stack(
+            [tf.linalg.norm(x-reference_embedding)-K.constant(threshold),
+             tf.linalg.norm(x-wrong_embedding)-K.constant(threshold)]
     )
     classifier = models.Sequential([
         layers.Input(shape=(128,)),
-        layers.Lambda(l2s),
+        layers.Flatten(),
+        layers.Lambda(l2s,output_shape=(2,)),
+        layers.Flatten(),
         # layers.Activation('relu',threshold=threshold)
-        layers.Activation('softmax')
+        layers.Activation('softmax'),
+        layers.Flatten()
     ])
-    model = models.Model(inputs=[model_from_dlib.input],
-                         outputs=[classifier(model_from_dlib.output)])
-    print('``````````',model.output)
-    model.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.01), metrics=['accuracy'])
 
+    def euclidean_distance(vects):
+        x, y = vects[0], vects[1]
+        sum_square = K.sum(K.square(x - y), axis=1, keepdims=True)
+        return K.sqrt(K.maximum(sum_square, K.epsilon()))
+
+    def contrastive_loss(y_true, y_pred):
+        '''Contrastive loss from Hadsell-et-al.'06
+        http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
+        '''
+        margin = 1
+        square_pred = K.square(y_pred)
+        margin_square = K.square(K.maximum(margin - y_pred, 0))
+        return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
+
+    l2_layer = layers.Lambda(euclidean_distance)
+
+    def l2_classification(vects):
+        d = euclidean_distance(vects)
+        return K.cast(K.greater_equal(d,K.constant(threshold)), dtype='float32')
+
+    class_layer = layers.Lambda(l2_classification)
+
+
+    model = models.Model(inputs=[model_from_dlib.input],
+                         outputs=[class_layer(K.stack([
+                                    model_from_dlib.output,
+                                    reference_embedding]))
+                                ])
+
+    model.compile(loss=binary_crossentropy, optimizer=SGD(lr=0.01), metrics=['accuracy'])
+    print(model.summary())
+    x_input = K.cast(input_keras(fr.load_image_file(args.img)),dtype='float32')
+    # an example of a face you're never going to want to match
+    x_other = K.cast(input_keras(fr.load_image_file('./gollum.jpg')),dtype='float32')
+    print(model.evaluate(x=x_input,y=np.asarray([0.]),steps=1))
+    print(model.evaluate(x=x_other,y=np.asarray([1.]),steps=1))
 
     adv_model = KerasClassifier(model,clip_values=(0.,255.), use_logits=False)
 
     eps = 0.1
     adv_crafter = FastGradientMethod(adv_model, eps=eps)
-    x_adv = adv_crafter.generate(x=input_keras(fr.load_image_file(args.img)))
 
+    x_adv = adv_crafter.generate(x=K.expand_dims(x_input,axis=0))
+
+    # cleverhans thing
     # wrap = utils_keras.KerasModelWrapper(model)
     # spsa = attacks.SPSA(wrap,sess=sess)
     # # fgsm_params = {'eps': 0.3,
@@ -139,7 +172,7 @@ def parse_arg(argv):
         '--img',
         type=str,
         required=True,
-        help='Path to image of you to convert into an adversarial example'
+        help='Path to image of you (or Bill Gates) to convert into an adversarial example'
     )
     arg_parser.add_argument(
         '--me',
